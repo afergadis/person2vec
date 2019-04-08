@@ -4,8 +4,8 @@ import csv
 import json
 import time
 
-import wiki_extract
 from person2vec import data_handler
+from person2vec.utils import wiki_extract
 
 HERE = path.abspath(path.dirname(__file__))
 PROJECT_DIR = path.dirname(HERE)
@@ -91,6 +91,10 @@ def _get_person_attributes(person_dict):
     attributes_dict.update({
         "political_party":
         wiki_extract.get_party(person_dict)
+    })
+    attributes_dict.update({
+        "gender":
+            wiki_extract.get_gender(person_dict)
     })
     attributes_dict.update({"claims": wiki_extract.get_claims(person_dict)})
 
