@@ -1,3 +1,5 @@
+tweepy
+requests
 pymongo
 gensim
 pandas
