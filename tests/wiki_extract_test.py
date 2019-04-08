@@ -17,7 +17,7 @@ def set_up():
         verify=False)
     test_input = json.loads(r.text)
     entities_entries = test_input['entities']
-    return entities_entries[entities_entries.keys()[0]]
+    return entities_entries[list(entities_entries.keys())[0]]
 
 
 def test_get_instance_of():
