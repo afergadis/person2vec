@@ -2,16 +2,13 @@
 # TODO: implement this with a keras.utils.data_utils.Sequence() to take advantage
 # fit_generator(use_multiprocessing=True)
 # alternate db name yelp_business_database_small
-
+import logging
 from gensim.models import KeyedVectors
 from numpy.random import shuffle as rand_shuffle
 from numpy.random import randint as randint
 from numpy import zeros as np_zeros
 from numpy import array as np_array
-from numpy import append as np_append
 from os import path
-
-from person2vec import data_handler
 from person2vec.utils import preprocessor
 
 HERE = path.abspath(path.dirname(__file__))
@@ -21,27 +18,34 @@ DATA_DIR = path.join(PROJECT_DIR, 'data')
 SETTINGS = {
     'word_vec_source': path.join(DATA_DIR,
                                  'GoogleNews-vectors-negative300.bin'),
-    'default_db': 'person2vec_database'
 }
+logging.basicConfig(
+    format='%(asctime)-15s [%(levelname)-8s:%(module)s] %(message)s',
+    level=logging.INFO)
 
 
 class EmbeddingDataGenerator(object):
     def __init__(self,
-                 word_vec_size,
-                 num_compare_entities,
-                 db_name=SETTINGS['default_db']):
+                 handler,
+                 num_compare_entities=None,
+                 word_vec_source=None):
+        if word_vec_source is None:
+            word_vec_source = SETTINGS['word_vec_source']
         self.word_vectors = KeyedVectors.load_word2vec_format(
-            SETTINGS['word_vec_source'], binary=True)
-        self.handler = data_handler.DataHandler(db_name)
-        self.word_vec_size = word_vec_size
-        self.num_compare_entities = num_compare_entities
+            word_vec_source, binary=True)
+        self.handler = handler
+        self.word_vec_size = self.word_vectors.vector_size
         self.total_entity_count = self.handler.entity_count()
-        self.entity_dict = self._create_entity_dict(self.handler)
+        if num_compare_entities:
+            self.num_compare_entities = num_compare_entities
+        else:
+            self.num_compare_entities = self.total_entity_count
+        self.entity_dict = self._create_entity_dict()
 
-    def _create_entity_dict(self, handler):
+    def _create_entity_dict(self):
         entity_dict = {}
         count = 0
-        for entity in handler.get_entity_iterator():
+        for entity in self.handler.get_entity_iterator():
             entity_dict.update({entity['_id']: count})
             count += 1
         return entity_dict
