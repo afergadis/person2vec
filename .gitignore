@@ -3,3 +3,5 @@
 .ipynb_checkpoints
 *.egg-info
 .cache
+/.idea/
+/person2vec/data/GoogleNews-vectors-negative300.bin
