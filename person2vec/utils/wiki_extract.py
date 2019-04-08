@@ -54,7 +54,7 @@ def word2id(word):
 
 def get_article(article_dict):
     pages = article_dict['query']['pages']
-    return pages[pages.keys()[0]]['extract']
+    return pages[list(pages.keys())[0]]['extract']
 
 
 def get_instance_of(entity_dict):

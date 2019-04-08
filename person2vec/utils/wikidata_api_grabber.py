@@ -1,8 +1,10 @@
-from os import path
+import sys
 import requests
 import csv
 import json
 import time
+from os import path
+from six import reraise
 
 from person2vec import data_handler
 from person2vec.utils import wiki_extract
@@ -14,7 +16,7 @@ DATA_DIR = path.join(PROJECT_DIR, 'data')
 API_WAIT_TIME = 0.1
 
 WIKIDATA_TITLE_URL = "https://www.wikidata.org/w/api.php?action=wbgetentities&sites=enwiki&titles=%s&format=json"
-WIKIPEDIA_URL = "https://en.wikipedia.org/w/api.php?action=query&format=json&titles=%s&prop=extracts&explaintext"
+WIKIPEDIA_URL = "https://en.wikipedia.org/w/api.php?action=query&format=json&titles=%s&prop=extracts&explaintext&exlimit=1"
 
 # wikidata codes for different entities and relationships
 DECODER = {
@@ -61,7 +63,7 @@ HEADERS = {
 
 
 def _get_wikidata_title(title):
-    r = requests.get(WIKIDATA_TITLE_URL % (title), headers=HEADERS)
+    r = requests.get(WIKIDATA_TITLE_URL % title, headers=HEADERS)
     return json.loads(r.text)
 
 
@@ -92,45 +94,30 @@ def _get_person_attributes(person_dict):
         "political_party":
         wiki_extract.get_party(person_dict)
     })
-    attributes_dict.update({
-        "gender":
-            wiki_extract.get_gender(person_dict)
-    })
+    attributes_dict.update({"gender": wiki_extract.get_gender(person_dict)})
     attributes_dict.update({"claims": wiki_extract.get_claims(person_dict)})
 
     return attributes_dict
 
 
 def _check_if_right_person(person_dict, target_name):
-    try:
-        retrieved_name = wiki_extract.get_title(person_dict)
-        description = wiki_extract.get_description(person_dict)
-        instance_of = wiki_extract.get_instance_of(person_dict)
-        gender = wiki_extract.get_gender(person_dict)
-        occ = wiki_extract.get_occupation(person_dict)
-    except:
-        print("Data in wrong form for " + target_name)
-        return False
-    if instance_of != 'human':
-        print(target_name + " does not appear to be of type human.")
-        return False
-    elif retrieved_name != target_name:
-        print("Wrong person retrieved. Got " + retrieved_name +
-              " instead of " + target_name)
+    retrieved_name = wiki_extract.get_title(person_dict)
+    if retrieved_name != target_name:
+        print("Wrong person retrieved. Got {} instead of {}".format(
+            retrieved_name, target_name))
         return False
     return True
 
 
 def _write_to_csv(rows):
-    with open(path.join(DATA_DIR, "people_attributes.csv"), 'wb') as w:
+    with open(path.join(DATA_DIR, "people_attributes.csv"), 'w') as w:
         csv_writer = csv.writer(w)
         for row in rows:
             print(row)
             csv_writer.writerow(row)
 
 
-def _write_to_db(new_entity):
-    handler = data_handler.DataHandler()
+def _write_to_db(new_entity, handler):
     # if entity by that name already exists, remove it
     if handler.get_entities({"name": new_entity["name"]}):
         handler.remove_entities({"name": new_entity["name"]})
@@ -139,72 +126,65 @@ def _write_to_db(new_entity):
 
 
 def _get_person_article(name):
-    r = requests.get(WIKIPEDIA_URL % (name), headers=HEADERS)
+    r = requests.get(WIKIPEDIA_URL % name, headers=HEADERS)
     article = wiki_extract.get_article(json.loads(r.text))
     return {"texts": [article]}
 
 
-def main():
-    rows_to_write = []
-    with open(path.join(DATA_DIR, "people.csv"), 'rb') as people_file:
-        people_reader = csv.reader(people_file)
+def main(handler):
+    # Clean entities collection
+    handler.remove_entities({})
+    attempt_counter = 0
+    fail_counter = 0
+    success_counter = 0
+    # rows_to_write = []
 
-        attempt_counter = 0
-        fail_counter = 0
-        success_counter = 0
+    for row in open(path.join(DATA_DIR, "people.txt")):
+        attempt_counter += 1
+        person_name = row.strip()
+        print(f"Trying {person_name} person number: {attempt_counter}")
 
-        for row in people_reader:
-            attempt_counter += 1
-            person_name = row[0]
-            #person_occupation = row[1]
-            print("Trying " + person_name + " person number: " +
-                  str(attempt_counter))
-            try:
-                person_name = person_name.encode('utf-8')
-            except:
-                print("Failed utf-8 encoding")
-                fail_counter += 1
-                continue
+        try:
+            person_wikidata = _get_wikidata_title(person_name)
+            print(f"Successfully got {person_name} from wikidata")
+        except:
+            print(f"Failed to get {person_name} from wikidata")
+            fail_counter += 1
+            reraise(*sys.exc_info())
+            continue
 
-            try:
-                person_wikidata = _get_wikidata_title(person_name)
-                print("Successfully got " + person_name + " from wikidata")
-            except:
-                print("Failed to get " + person_name + " from wikidata")
-                fail_counter += 1
-                continue
+        try:
+            person_article = _get_person_article(person_name)
+        except:
+            print(f"Failed to get {person_name}'s article from wikipedia")
+            fail_counter += 1
+            reraise(*sys.exc_info())
+            continue
 
-            try:
-                person_article = _get_person_article(person_name)
-            except:
-                print("Failed to get " + person_name +
-                      "'s article from wikipedia")
-                fail_counter += 1
-                continue
+        # get the first entity from the dict that wikidata API returns
+        entities_entries = person_wikidata['entities']
+        first_entity = entities_entries[list(entities_entries.keys())[0]]
 
-            # get the first entity from the dict that wikidata API returns
-            entities_entries = person_wikidata['entities']
-            first_entity = entities_entries[entities_entries.keys()[0]]
+        # returns True if all attributes successfully extracted
+        is_right_person = _check_if_right_person(first_entity, person_name)
 
-            # returns True if all attributes successfully extracted
-            is_right_person = _check_if_right_person(first_entity, person_name)
+        if not is_right_person:
+            fail_counter += 1
+        else:
+            person_attributes = {"name": person_name}
+            # adds entries from dict returned by get_person_attributes to the existing dict
+            person_attributes.update(_get_person_attributes(first_entity))
+            person_attributes.update(person_article)
+            # a number that will be this person's number to find its embedding
+            person_attributes.update({'embed_num': success_counter})
+            _write_to_db(person_attributes, handler)
+            # rows_to_write.append(person_attributes)
+            success_counter += 1
 
-            if not is_right_person:
-                fail_counter += 1
-            else:
-                person_attributes = {"name": person_name}
-                # adds entries from dict returned by get_person_attributes to the existing dict
-                person_attributes.update(_get_person_attributes(first_entity))
-                person_attributes.update(person_article)
-                # a number that will be this person's number to find its embedding
-                person_attributes.update({'embed_num': success_counter})
-                _write_to_db(person_attributes)
-                success_counter += 1
+        # to prevent hitting the wikipedia API too frequently
+        time.sleep(API_WAIT_TIME)
 
-            # to prevent hitting the wikipedia API too frequently
-            #time.sleep(API_WAIT_TIME)
-
-    #_write_to_csv(rows_to_write)
+    # _write_to_csv(rows_to_write)
 
     print(str(attempt_counter) + " attempts made")
     print(str(fail_counter) + " entities failed")
@@ -217,4 +197,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    handler = data_handler.DataHandler()
+    main(handler)
