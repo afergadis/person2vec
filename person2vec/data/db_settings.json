@@ -1,0 +1,7 @@
+{
+  "user": "person2vec",
+  "pwd": "person2vec",
+  "host": "localhost",
+  "port": 27017,
+  "db_name": "person2vec"
+}

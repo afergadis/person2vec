@@ -1,22 +1,32 @@
+import pickle
+import json
+from os import path
 from pymongo import MongoClient
 from bson.binary import Binary
-import pickle
 from bson.objectid import ObjectId
 from person2vec.utils import tools
 
-SETTINGS = {'default_db': 'person2vec_database'}
+HERE = path.abspath(path.dirname(__file__))
+PROJECT_DIR = path.dirname(HERE)
+DATA_DIR = path.join(PROJECT_DIR, 'data')
 
 
 class DataHandler(object):
-    def __init__(self, db_name=SETTINGS['default_db']):
-        client = MongoClient()
-        client = MongoClient('localhost', 27017)
+    def __init__(self, db_settings_path=None):
+        if db_settings_path is None:
+            db_settings_path = path.join(DATA_DIR, 'db_settings.json')
+        with open(db_settings_path) as fp:
+            db = json.load(fp)
+        conn = "mongodb://{user}:{pwd}@{host}:{port}/{db_name}".format(**db)
+            # db['user'], db['pwd'], db['host'], db['post'], db['db_name'])
+        client = MongoClient(conn)
 
-        self.db = client[db_name]
+        self.db = client[db['db_name']]
         self.entities_collection = self.db.entities
         self.snippets_collection = self.db.snippets
 
-    def _serialize_array_for_mongo(self, array):
+    @staticmethod
+    def _serialize_array_for_mongo(array):
         return Binary(pickle.dumps(array, protocol=2), subtype=128)
 
     def get_snippet_index(self):
