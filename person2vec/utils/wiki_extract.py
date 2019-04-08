@@ -1,44 +1,47 @@
 import json
 
 # wikidata codes for different entities and relationships
-DECODER = {'citizenship':'P27',
-            'date of birth':'P569',
-            'instance_of':'P31',
-            'human':'Q5',
-            'Q5':'human',
-            'gender':'P21',
-            'Q6581072':'female',
-            'female':'Q6581072',
-            'Q6581097':'male',
-            'male':'Q6581097',
-            'occupation':'P106',
-            'Q82955':'politician',
-            'politician':'Q82955',
-            'Q33999':'actor',
-            'actor':'Q33999',
-            'Q10800557':'film actor',
-            'film actor':'Q10800557',
-            'Q43845':'businessperson',
-            'businessperson':'Q43845',
-            'Q639669':'musician',
-            'musician':'Q639669',
-            'Q177220':'singer',
-            'singer':'Q177220',
-            'date of birth':'P569',
-            'member of political party':'P102',
-            'democrat':'Q29552',
-            'republican':'Q29468'
-            }
+DECODER = {
+    'citizenship': 'P27',
+    'date of birth': 'P569',
+    'instance_of': 'P31',
+    'human': 'Q5',
+    'Q5': 'human',
+    'gender': 'P21',
+    'Q6581072': 'female',
+    'female': 'Q6581072',
+    'Q6581097': 'male',
+    'male': 'Q6581097',
+    'occupation': 'P106',
+    'Q82955': 'politician',
+    'politician': 'Q82955',
+    'Q33999': 'actor',
+    'actor': 'Q33999',
+    'Q10800557': 'film actor',
+    'film actor': 'Q10800557',
+    'Q43845': 'businessperson',
+    'businessperson': 'Q43845',
+    'Q639669': 'musician',
+    'musician': 'Q639669',
+    'Q177220': 'singer',
+    'singer': 'Q177220',
+    'date of birth': 'P569',
+    'member of political party': 'P102',
+    'democrat': 'Q29552',
+    'republican': 'Q29468'
+}
 
-CLAIMS_LIST = ['P27',               #citizenship
-                'P103',             #native language
-                'P39',              #position held
-                'P166',             #award received
-                'P69',              #educated at
-                'P172',             #ethnic group
-                'P1303',            #instrument
-                'P512',             #academic degree
-                'P551']             #residence
+CLAIMS_LIST = [
+    'P27',  #citizenship
+    'P103',  #native language
+    'P39',  #position held
+    'P166',  #award received
+    'P69',  #educated at
+    'P172',  #ethnic group
+    'P1303',  #instrument
+    'P512',  #academic degree
+    'P551'
+]  #residence
 
 
 def id2word(id):
@@ -55,7 +58,8 @@ def get_article(article_dict):
 
 
 def get_instance_of(entity_dict):
-    return id2word(entity_dict['claims'][word2id('instance_of')][0]['mainsnak']['datavalue']['value']['id'])
+    return id2word(entity_dict['claims'][word2id('instance_of')][0]['mainsnak']
+                   ['datavalue']['value']['id'])
 
 
 def get_title(entity_dict):
@@ -67,14 +71,19 @@ def get_description(entity_dict):
 
 
 def get_gender(entity_dict):
-    return id2word([entity_dict['claims'][word2id('gender')][0]['mainsnak']['datavalue']['value']['id']][0])
+    return id2word([
+        entity_dict['claims'][word2id('gender')][0]['mainsnak']['datavalue']
+        ['value']['id']
+    ][0])
 
 
 def get_birth_date(entity_dict):
     try:
-        return entity_dict['claims'][word2id('date of birth')][0]['mainsnak']['datavalue']['value']['time']
+        return entity_dict['claims'][word2id(
+            'date of birth')][0]['mainsnak']['datavalue']['value']['time']
     except:
         return 'unknown'
+
 
 def get_party(entity_dict):
     try:
@@ -93,7 +102,6 @@ def get_party(entity_dict):
     return 'other'
 
 
-
 def get_claims(entity_dict):
     claims = {}
     for claim in CLAIMS_LIST:
@@ -101,7 +109,7 @@ def get_claims(entity_dict):
             entry_list = entity_dict['claims'][claim]
         except:
             continue
-        claims.update({claim:[]})
+        claims.update({claim: []})
         for entry in entry_list:
             value = entry['mainsnak']['datavalue']['value']['id']
             claims[claim].append(value)

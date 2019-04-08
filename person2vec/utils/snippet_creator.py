@@ -3,13 +3,15 @@ from re import compile, sub, UNICODE
 
 # will get a 32 word-long snippet every 16 words, half of each snippet
 # overlaps with the previous snippet and half with the next snippet
-SETTINGS = {'snippet_len':32, 'stride':16, 'max_expand':2000}
+SETTINGS = {'snippet_len': 32, 'stride': 16, 'max_expand': 2000}
+
 
 def get_texts_length(texts):
     text_length = 0
     for text in texts:
         text_length += len(text.split())
     return text_length
+
 
 def get_longest_texts(handler):
     top_length = 0
@@ -22,7 +24,7 @@ def get_longest_texts(handler):
 
 # removes punctuation from text and makes unicode-safe at same time
 def remove_punctuation(text):
-    text = text.replace('-',' ')
+    text = text.replace('-', ' ')
     just_alnum_pattern = compile('([^\s\w]|_)+', UNICODE)
     return just_alnum_pattern.sub('', text)
 
@@ -50,7 +52,7 @@ def slice_into_snippets(text, snippet_len, sample_spacing):
     subs = []
     for i in range(0, len(words), sample_spacing):
         if len(words) - i > snippet_len:
-            subs.append(" ".join(words[i: i + snippet_len]))
+            subs.append(" ".join(words[i:i + snippet_len]))
         # avoids having a weird length snippet at the end
         else:
             subs.append(" ".join(words[-snippet_len:]))
@@ -64,7 +66,7 @@ def process_text(text, settings, stride):
 
 
 def get_max_snippets(longest_texts_length, max_stride):
-    return min(SETTINGS['max_expand'],int(longest_texts_length / max_stride))
+    return min(SETTINGS['max_expand'], int(longest_texts_length / max_stride))
 
 
 def concat_all_texts(texts):
@@ -77,6 +79,7 @@ def get_stride(texts_length, entity_max_snippets):
     # min and max force output to be in the rane 1..settings max stride
     stride = int(max(texts_length / entity_max_snippets, 1))
     return min(stride, SETTINGS['stride'])
+
 
 # there can be multiple texts saved in the db for each person
 # this function snippetizes each text in turn and returns a list of snippets
@@ -109,19 +112,24 @@ def write_snippets(handler, entity, snippets):
         # if statement as final check to make sure we don't insert an empty string
         # as a snippet
         if len(snippet) > 0:
-            handler.create_snippet({'owner_id':entity['_id'],
-                                    'text':snippet})
+            handler.create_snippet({
+                'owner_id': entity['_id'],
+                'text': snippet
+            })
 
 
 def snippetize_db(handler):
     num_entities = handler.entity_count()
     count = 0
     longest_texts_length = get_longest_texts(handler)
-    entity_max_snippets = get_max_snippets(longest_texts_length, SETTINGS['stride'])
+    entity_max_snippets = get_max_snippets(longest_texts_length,
+                                           SETTINGS['stride'])
     for entity in handler.get_entity_iterator():
         # if to make sure there actually are some texts for this entity
         if len(entity['texts']) > 0:
             count += 1
-            snippets = get_entity_snippets(entity, entity_max_snippets, SETTINGS)
-            print("writing snippets for " + str(entity['_id']) + " number " + str(count) + " of " + str(num_entities))
+            snippets = get_entity_snippets(entity, entity_max_snippets,
+                                           SETTINGS)
+            print("writing snippets for " + str(entity['_id']) + " number " +
+                  str(count) + " of " + str(num_entities))
             write_snippets(handler, entity, snippets)

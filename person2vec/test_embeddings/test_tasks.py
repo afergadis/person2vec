@@ -12,7 +12,7 @@ from person2vec.utils import tools
 from person2vec import data_handler
 from person2vec.generators import training_data_generator
 
-TASKS=['gender', 'occupation', 'age', 'political_party']
+TASKS = ['gender', 'occupation', 'age', 'political_party']
 
 
 # grabs the embedding from the embedding matrix with index corresponding to num
@@ -22,14 +22,18 @@ def _get_entity_vec(num, embeds):
 
 def _name_not_has_vec(name, data_gen):
     try:
-        data_gen.word_vectors.word_vec(name.replace(' ','_'))
+        data_gen.word_vectors.word_vec(name.replace(' ', '_'))
         return False
     except:
         return True
 
+
 # removes any entities for which there is no word2vec embedding for comparison
 def _truncate_list(entities, data_gen):
-    return entities.drop([name for name in entities.index.values if _name_not_has_vec(name, data_gen)])
+    return entities.drop([
+        name for name in entities.index.values
+        if _name_not_has_vec(name, data_gen)
+    ])
 
 
 def _align_frames(entities, embeds):
@@ -38,7 +42,8 @@ def _align_frames(entities, embeds):
         entities.set_index('_id', inplace=True)
 
     # removes entries from embeds that are not in entities (this will occur if entities has been truncated)
-    embeds = embeds.drop([i for i in embeds.index.values if i not in entities.index])
+    embeds = embeds.drop(
+        [i for i in embeds.index.values if i not in entities.index])
 
     # sort them so training input and corresponding outputs will be in same order
     embeds.sort_index(inplace=True)
@@ -57,6 +62,7 @@ def _align_frames(entities, embeds):
 
 #    return train_data, train_labels, test_data, test_labels
 
+
 def _split_train_test(embeds, labels, num_examples=1000):
     num_train_examples = int(0.75 * num_examples)
     labels = np.asarray(labels)
@@ -66,7 +72,7 @@ def _split_train_test(embeds, labels, num_examples=1000):
     train_labels = labels[train_indices]
 
     train_indices_set = set(train_indices)
-    all_indices_set = set(range(0,num_examples))
+    all_indices_set = set(range(0, num_examples))
     test_indices = list(all_indices_set - train_indices_set)
 
     test_data = embeds.values[test_indices]
@@ -110,22 +116,31 @@ def run_age_task(entities, embeds, truncate, data_gen, embed_size, callbacks):
     ages = pandas.Series(entities['age'])
     ages_nums = np.array(ages)
 
-    train_data, train_labels, test_data, test_labels = _split_train_test(embeds, ages_nums, len(embeds))
+    train_data, train_labels, test_data, test_labels = _split_train_test(
+        embeds, ages_nums, len(embeds))
 
     # TODO: probably make this a separate model constructor function
-    model = Sequential([Dense(1, input_shape=(embed_size,), activation='linear'),])
+    model = Sequential([
+        Dense(1, input_shape=(embed_size, ), activation='linear'),
+    ])
     opt = optimizers.Adam(lr=0.02)
-    model.compile(optimizer=opt, loss='mean_squared_error', metrics=['accuracy'])
-    history = model.fit(train_data, train_labels,
-                verbose=1,
-                epochs=500,
-                validation_data=(test_data, test_labels),
-                callbacks=callbacks)
+    model.compile(
+        optimizer=opt, loss='mean_squared_error', metrics=['accuracy'])
+    history = model.fit(
+        train_data,
+        train_labels,
+        verbose=1,
+        epochs=500,
+        validation_data=(test_data, test_labels),
+        callbacks=callbacks)
     return history
 
 
-def run_party_task(entities, embeds, truncate, data_gen, embed_size, callbacks):
-    print('================TESTING POLITICAL PARTY===============================')
+def run_party_task(entities, embeds, truncate, data_gen, embed_size,
+                   callbacks):
+    print(
+        '================TESTING POLITICAL PARTY==============================='
+    )
 
     # entities dataframe contains id column as index and gender column as 'male'/'female'
     entities.columns = ['_id', 'political_party']
@@ -145,21 +160,30 @@ def run_party_task(entities, embeds, truncate, data_gen, embed_size, callbacks):
     # get the raw y vector for training
     one_hot_parties = entities.values
 
-
-    train_data, train_labels, test_data, test_labels = _split_train_test(embeds, one_hot_parties, len(entities))
+    train_data, train_labels, test_data, test_labels = _split_train_test(
+        embeds, one_hot_parties, len(entities))
 
     # TODO: probably make this a separate model constructor function
-    model = Sequential([Dense(len(one_hot_parties[0]), input_shape=(embed_size,), activation='sigmoid'),])
-    model.compile(optimizer='adam', loss='mean_squared_error', metrics=['accuracy'])
-    history = model.fit(train_data, train_labels,
-                verbose=1,
-                epochs=90,
-                validation_data=(test_data, test_labels),
-                callbacks=callbacks)
+    model = Sequential([
+        Dense(
+            len(one_hot_parties[0]),
+            input_shape=(embed_size, ),
+            activation='sigmoid'),
+    ])
+    model.compile(
+        optimizer='adam', loss='mean_squared_error', metrics=['accuracy'])
+    history = model.fit(
+        train_data,
+        train_labels,
+        verbose=1,
+        epochs=90,
+        validation_data=(test_data, test_labels),
+        callbacks=callbacks)
     return history
 
 
-def run_gender_task(entities, embeds, truncate, data_gen, embed_size, callbacks):
+def run_gender_task(entities, embeds, truncate, data_gen, embed_size,
+                    callbacks):
     print('================TESTING GENDER===============================')
 
     # entities dataframe contains id column as index and gender column as 'male'/'female'
@@ -179,20 +203,27 @@ def run_gender_task(entities, embeds, truncate, data_gen, embed_size, callbacks)
     genders = pandas.Series(entities['gender'])
     just_binary_genders = np.array(genders)
 
-    train_data, train_labels, test_data, test_labels = _split_train_test(embeds, just_binary_genders, len(embeds))
+    train_data, train_labels, test_data, test_labels = _split_train_test(
+        embeds, just_binary_genders, len(embeds))
 
     # TODO: probably make this a separate model constructor function
-    model = Sequential([Dense(1, input_shape=(embed_size,), activation='sigmoid'),])
-    model.compile(optimizer='adam', loss='mean_squared_error', metrics=['accuracy'])
-    history = model.fit(train_data, train_labels,
-                verbose=1,
-                epochs=90,
-                validation_data=(test_data, test_labels),
-                callbacks=callbacks)
+    model = Sequential([
+        Dense(1, input_shape=(embed_size, ), activation='sigmoid'),
+    ])
+    model.compile(
+        optimizer='adam', loss='mean_squared_error', metrics=['accuracy'])
+    history = model.fit(
+        train_data,
+        train_labels,
+        verbose=1,
+        epochs=90,
+        validation_data=(test_data, test_labels),
+        callbacks=callbacks)
     return history
 
 
-def run_occupation_task(entities, embeds, truncate, data_gen, embed_size, callbacks):
+def run_occupation_task(entities, embeds, truncate, data_gen, embed_size,
+                        callbacks):
     print('================TESTING OCCUPATION===============================')
     entities.columns = ['_id', 'occupation']
 
@@ -207,16 +238,24 @@ def run_occupation_task(entities, embeds, truncate, data_gen, embed_size, callba
 
     one_hot_occupations = entities.values
 
-    train_data, train_labels, test_data, test_labels = _split_train_test(embeds, one_hot_occupations, len(embeds))
+    train_data, train_labels, test_data, test_labels = _split_train_test(
+        embeds, one_hot_occupations, len(embeds))
 
     # TODO: probably make this a separate model constructor function
-    model = Sequential([Dense(4, input_shape=(embed_size,), activation='softmax'),])
-    model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
-    history = model.fit(train_data, train_labels,
-                verbose=1,
-                epochs=90,
-                validation_data=(test_data, test_labels),
-                callbacks=callbacks)
+    model = Sequential([
+        Dense(4, input_shape=(embed_size, ), activation='softmax'),
+    ])
+    model.compile(
+        optimizer='adam',
+        loss='categorical_crossentropy',
+        metrics=['accuracy'])
+    history = model.fit(
+        train_data,
+        train_labels,
+        verbose=1,
+        epochs=90,
+        validation_data=(test_data, test_labels),
+        callbacks=callbacks)
     return history
 
 
@@ -243,11 +282,12 @@ def _scrub_non_top(categories, top_categories):
 def _get_rid_of_small_categories(entities):
     rows = [row for row in entities.categories]
     top_categories = _get_top_categories(rows)
-    entities.categories = entities.categories.apply(_scrub_non_top, args=([top_categories]))
+    entities.categories = entities.categories.apply(
+        _scrub_non_top, args=([top_categories]))
     # puts nan into any row with an empty list in category column
-   # entities.categories = entities.categories[entities.categories.apply(len) > 0]
+    # entities.categories = entities.categories[entities.categories.apply(len) > 0]
     # drops all rows that have a nan
-   # entities.dropna(axis=0, inplace=True)
+    # entities.dropna(axis=0, inplace=True)
     return entities
 
 
@@ -263,29 +303,34 @@ def _convert_categories(entities):
     category_index = {}
     count = 0
     for category in category_list:
-        category_index.update({category:count})
+        category_index.update({category: count})
         count += 1
 
     num_categories = len(category_list)
 
-    entities.categories = entities.categories.apply(_multi_hot, args=(category_index, num_categories,))
+    entities.categories = entities.categories.apply(
+        _multi_hot, args=(
+            category_index,
+            num_categories,
+        ))
     labels_series = entities.categories.apply(pandas.Series)
 
     return labels_series, category_list
 
 
 def run_biz_type_task(entities, embeds, data_gen, embed_size, callbacks):
-    print('================TESTING BUSINESS CATEGORY===============================')
+    print(
+        '================TESTING BUSINESS CATEGORY==============================='
+    )
     entities.columns = ['categories']
 
     entities, category_list = _convert_categories(entities)
     entities, embeds = _align_frames(entities, embeds)
 
-
     labels = entities.values
 
-    train_data, train_labels, test_data, test_labels = _split_train_test(embeds, labels, len(labels))
-
+    train_data, train_labels, test_data, test_labels = _split_train_test(
+        embeds, labels, len(labels))
 
     # num_train_examples = 2300
     # train_data = embeds[:num_train_examples].values
@@ -294,34 +339,58 @@ def run_biz_type_task(entities, embeds, data_gen, embed_size, callbacks):
     # test_labels = labels[num_train_examples:]
 
     # TODO: probably make this a separate model constructor function
-    model = Sequential([Dense(len(category_list), input_shape=(embed_size,), activation='sigmoid'),])
-    model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
-    model.fit(train_data, train_labels,
-                verbose=1,
-                epochs=90,
-                validation_data=(test_data, test_labels),
-                callbacks=callbacks)
+    model = Sequential([
+        Dense(
+            len(category_list),
+            input_shape=(embed_size, ),
+            activation='sigmoid'),
+    ])
+    model.compile(
+        optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+    model.fit(
+        train_data,
+        train_labels,
+        verbose=1,
+        epochs=90,
+        validation_data=(test_data, test_labels),
+        callbacks=callbacks)
 
     return model, category_list, len(train_data)
 
-def _run_tasks(tasks, entities, embeds, truncate, data_gen, embed_size, callbacks):
+
+def _run_tasks(tasks, entities, embeds, truncate, data_gen, embed_size,
+               callbacks):
     histories = {}
     if 'gender' in tasks:
-        to_drop = list(set(entities.columns) - set(['name','_id','gender']))
-        histories['gender'] = run_gender_task(entities.drop(to_drop, axis=1), embeds, truncate, data_gen, embed_size, callbacks)
+        to_drop = list(set(entities.columns) - set(['name', '_id', 'gender']))
+        histories['gender'] = run_gender_task(
+            entities.drop(to_drop, axis=1), embeds, truncate, data_gen,
+            embed_size, callbacks)
     if 'occupation' in tasks:
-        to_drop = list(set(entities.columns) - set(['name','_id','occupation']))
-        histories['occupation'] = run_occupation_task(entities.drop(to_drop, axis=1), embeds, truncate, data_gen, embed_size, callbacks)
+        to_drop = list(
+            set(entities.columns) - set(['name', '_id', 'occupation']))
+        histories['occupation'] = run_occupation_task(
+            entities.drop(to_drop, axis=1), embeds, truncate, data_gen,
+            embed_size, callbacks)
     if 'age' in tasks:
-        to_drop = list(set(entities.columns) - set(['name','_id','birth_date']))
-        histories['age'] = run_age_task(entities.drop(to_drop, axis=1), embeds, truncate, data_gen, embed_size, callbacks)
+        to_drop = list(
+            set(entities.columns) - set(['name', '_id', 'birth_date']))
+        histories['age'] = run_age_task(
+            entities.drop(to_drop, axis=1), embeds, truncate, data_gen,
+            embed_size, callbacks)
     if 'political_party' in tasks:
-        to_drop = list(set(entities.columns) - set(['name','_id','political_party']))
-        histories['political_party'] = run_party_task(entities.drop(to_drop, axis=1), embeds, truncate, data_gen, embed_size, callbacks)
+        to_drop = list(
+            set(entities.columns) - set(['name', '_id', 'political_party']))
+        histories['political_party'] = run_party_task(
+            entities.drop(to_drop, axis=1), embeds, truncate, data_gen,
+            embed_size, callbacks)
     if 'biz_type' in tasks:
-        to_drop = list(set(entities.columns) - set(['_id','categories']))
-        return run_biz_type_task(entities.drop(to_drop, axis=1), embeds, data_gen, embed_size, callbacks)
+        to_drop = list(set(entities.columns) - set(['_id', 'categories']))
+        return run_biz_type_task(
+            entities.drop(to_drop, axis=1), embeds, data_gen, embed_size,
+            callbacks)
     return histories
+
 
 def _get_entities_from_db(handler, index='name'):
     entities = pandas.DataFrame.from_dict(handler.get_all_entities())
@@ -331,13 +400,18 @@ def _get_entities_from_db(handler, index='name'):
 
 # input a model containing an embedding layer, tests will then be run on the embeddings
 # when truncate = True, it will test only on the entities for which word2vec word vectors exist
-def test_model(embedding_model, tasks=TASKS, data_gen=None, truncate=True, embed_size=300, db='person2vec_database', callbacks=[]):
+def test_model(embedding_model,
+               tasks=TASKS,
+               data_gen=None,
+               truncate=True,
+               embed_size=300,
+               db='person2vec_database',
+               callbacks=[]):
     handler = data_handler.DataHandler(db)
 
     # can pass a training_data_generator to save time, but, if none is passed, create one
     if not data_gen:
         data_gen = training_data_generator.EmbeddingDataGenerator(300, 4)
-
 
     raw_embeds = tools.get_embed_weights_from_model(embedding_model)
     embeds = tools.reassociate_embeds_with_ids(raw_embeds, data_gen)
@@ -347,11 +421,18 @@ def test_model(embedding_model, tasks=TASKS, data_gen=None, truncate=True, embed
     else:
         entities = _get_entities_from_db(handler)
 
-    return _run_tasks(tasks, entities, embeds, truncate, data_gen, embed_size, callbacks)
+    return _run_tasks(tasks, entities, embeds, truncate, data_gen, embed_size,
+                      callbacks)
 
 
 # same as test_model but runs on a set of embeddings passed as an array
-def test_embeddings(embeddings, tasks=TASKS, data_gen=None, truncate=True, embed_size=300, db='person2vec_database', callbacks=[]):
+def test_embeddings(embeddings,
+                    tasks=TASKS,
+                    data_gen=None,
+                    truncate=True,
+                    embed_size=300,
+                    db='person2vec_database',
+                    callbacks=[]):
     handler = data_handler.DataHandler(db)
 
     # can pass a training_data_generator to save time, but, if none is passed, create one
@@ -366,8 +447,15 @@ def test_embeddings(embeddings, tasks=TASKS, data_gen=None, truncate=True, embed
 
     return _run_tasks(tasks, entities, embeds, truncate, data_gen)
 
+
 # same as test_model but runs on a set of embeddings passed as a series indexed by _id
-def test_embeddings_with_ids(embeds, tasks=TASKS, data_gen=None, truncate=True, embed_size=300, db='person2vec_database', callbacks=[]):
+def test_embeddings_with_ids(embeds,
+                             tasks=TASKS,
+                             data_gen=None,
+                             truncate=True,
+                             embed_size=300,
+                             db='person2vec_database',
+                             callbacks=[]):
     handler = data_handler.DataHandler(db)
 
     # can pass a training_data_generator to save time, but, if none is passed, create one
@@ -379,21 +467,23 @@ def test_embeddings_with_ids(embeds, tasks=TASKS, data_gen=None, truncate=True, 
     else:
         entities = _get_entities_from_db(handler)
 
-    return _run_tasks(tasks, entities, embeds, truncate, data_gen, embed_size, callbacks)
+    return _run_tasks(tasks, entities, embeds, truncate, data_gen, embed_size,
+                      callbacks)
 
 
 def _get_word2vec_vector(row, data_gen):
-    return data_gen.word_vectors.word_vec(row.replace(' ','_')).flatten()
+    return data_gen.word_vectors.word_vec(row.replace(' ', '_')).flatten()
 
 
 def _associate_names_with_word_vecs(entities, data_gen):
     wordvecs_dict = {}
     for name in entities.index:
-        wordvecs_dict.update({name:_get_word2vec_vector(name,data_gen)})
+        wordvecs_dict.update({name: _get_word2vec_vector(name, data_gen)})
     return pandas.DataFrame.from_dict(wordvecs_dict, orient='index')
 
+
 def _get_id_for_name(name, handler):
-    return handler.get_entity({'name':name})['_id']
+    return handler.get_entity({'name': name})['_id']
 
 
 def test_word2vec(word2vec_object, tasks=TASKS, data_gen=None, embed_size=300):
@@ -404,11 +494,21 @@ def test_word2vec(word2vec_object, tasks=TASKS, data_gen=None, embed_size=300):
         data_gen = training_data_generator.EmbeddingDataGenerator(300, 4)
 
     entities = _get_entities_from_db(handler)
-    entities = entities.drop([name for name in entities.index.values if _name_not_has_vec(name, data_gen)])
+    entities = entities.drop([
+        name for name in entities.index.values
+        if _name_not_has_vec(name, data_gen)
+    ])
     word_vecs = _associate_names_with_word_vecs(entities, data_gen)
     word_vecs.reset_index(inplace=True)
-    word_vecs['_id'] = pandas.Series([_get_id_for_name(name, handler) for name in word_vecs['index']])
+    word_vecs['_id'] = pandas.Series(
+        [_get_id_for_name(name, handler) for name in word_vecs['index']])
     word_vecs.set_index('index', inplace=True)
     word_vecs.set_index('_id', inplace=True)
 
-    _run_tasks(tasks=tasks, entities=entities, embeds=word_vecs, data_gen=data_gen, truncate=False, embed_size=embed_size)
+    _run_tasks(
+        tasks=tasks,
+        entities=entities,
+        embeds=word_vecs,
+        data_gen=data_gen,
+        truncate=False,
+        embed_size=embed_size)

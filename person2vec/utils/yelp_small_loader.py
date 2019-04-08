@@ -12,11 +12,14 @@ def load_businesses(handler):
             line = line.replace('business_id', '_id')
             line_json = json.loads(line)
             handler.create_entity(line_json)
-            handler.update_entity({'_id':line_json['_id']}, 'embed_num', count)
+            handler.update_entity({
+                '_id': line_json['_id']
+            }, 'embed_num', count)
             count += 1
             print('inserted business number ' + str(count))
             if count > 2999:
                 break
+
 
 def load_reviews(business_handler):
     print('===========Loading Reviews==================')
@@ -26,7 +29,9 @@ def load_reviews(business_handler):
             line_json = json.loads(line)
             business_id = line_json['business_id']
             text = line_json['text']
-            business_handler.update_entity_array({'_id':business_id}, 'texts', text)
+            business_handler.update_entity_array({
+                '_id': business_id
+            }, 'texts', text)
             count += 1
             print('inserted review number ' + str(count))
 
@@ -39,10 +44,11 @@ def load_tips(business_handler):
             line_json = json.loads(line)
             business_id = line_json['business_id']
             text = line_json['text']
-            business_handler.update_entity_array({'_id':business_id}, 'texts', text)
+            business_handler.update_entity_array({
+                '_id': business_id
+            }, 'texts', text)
             count += 1
             print('inserted tip number ' + str(count))
-
 
 
 def load_yelp_data():
@@ -54,6 +60,7 @@ def load_yelp_data():
 
 def main():
     load_yelp_data()
+
 
 if __name__ == "__main__":
     main()

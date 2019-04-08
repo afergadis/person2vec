@@ -18,36 +18,39 @@ HERE = path.abspath(path.dirname(__file__))
 PROJECT_DIR = path.dirname(HERE)
 DATA_DIR = path.join(PROJECT_DIR, 'data')
 
-SETTINGS = {'word_vec_source':path.join(DATA_DIR, 'GoogleNews-vectors-negative300.bin'),
-            'default_db':'person2vec_database'
-           }
+SETTINGS = {
+    'word_vec_source': path.join(DATA_DIR,
+                                 'GoogleNews-vectors-negative300.bin'),
+    'default_db': 'person2vec_database'
+}
 
 
 class EmbeddingDataGenerator(object):
-    def __init__(self, word_vec_size, num_compare_entities, db_name=SETTINGS['default_db']):
-        self.word_vectors = KeyedVectors.load_word2vec_format(SETTINGS['word_vec_source'], binary=True)
+    def __init__(self,
+                 word_vec_size,
+                 num_compare_entities,
+                 db_name=SETTINGS['default_db']):
+        self.word_vectors = KeyedVectors.load_word2vec_format(
+            SETTINGS['word_vec_source'], binary=True)
         self.handler = data_handler.DataHandler(db_name)
         self.word_vec_size = word_vec_size
         self.num_compare_entities = num_compare_entities
         self.total_entity_count = self.handler.entity_count()
         self.entity_dict = self._create_entity_dict(self.handler)
 
-
     def _create_entity_dict(self, handler):
         entity_dict = {}
         count = 0
         for entity in handler.get_entity_iterator():
-            entity_dict.update({entity['_id']:count})
+            entity_dict.update({entity['_id']: count})
             count += 1
         return entity_dict
-
 
     def _get_snippet_index(self, shuffle):
         index = self.handler.get_snippet_index()
         if shuffle:
             rand_shuffle(index)
         return index
-
 
     # reduce entities to ints to they can be loaded into keras embedding layer
     # create small list of entities as the input to the training--we want to
@@ -76,7 +79,6 @@ class EmbeddingDataGenerator(object):
 
         return (input_entity_nums, y)
 
-
     def _vectorize_text(self, text):
         vectors = []
         for word in text.split():
@@ -86,7 +88,6 @@ class EmbeddingDataGenerator(object):
             except:
                 vectors.append(np_zeros(self.word_vec_size))
         return vectors
-
 
     # for every snippet in the db, make a training example of the number corre
     # sponding to the person along with n other random person numbers in random
@@ -107,15 +108,16 @@ class EmbeddingDataGenerator(object):
             # for each snippet in our shuffled index
             for i in snippet_index:
                 # get the actual snippet using the id
-                snippet = self.handler.get_snippet({'_id':i})
+                snippet = self.handler.get_snippet({'_id': i})
                 # get the the entity that this snippet corresponds to
                 # (this is what we'll be trying to predict)
                 entity_id = snippet['owner_id']
-                entity = self.handler.get_entity({'_id':entity_id})
+                entity = self.handler.get_entity({'_id': entity_id})
                 # create an input/output pair on the entity for this snippet
                 entity_x, y = self._create_entity_x_y(entity['_id'])
                 # remove the entity's name from the snippet if it appears there
-                snippet_text = preprocessor.remove_entity_names(snippet['text'], entity['name'])
+                snippet_text = preprocessor.remove_entity_names(
+                    snippet['text'], entity['name'])
                 # create input from the snippet
                 word_x = self._vectorize_text(snippet_text)
                 batch_x_entity.append(entity_x)
@@ -123,7 +125,8 @@ class EmbeddingDataGenerator(object):
                 batch_y.append(y)
                 # when we have enough samples for one batch, yield it
                 if len(batch_y) >= batch_size:
-                    yield ([np_array(batch_x_word), np_array(batch_x_entity)], np_array(batch_y))
+                    yield ([np_array(batch_x_word),
+                            np_array(batch_x_entity)], np_array(batch_y))
                     # flush the lists when batch is complete
                     batch_x_entity = []
                     batch_x_word = []

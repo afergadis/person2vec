@@ -2,6 +2,7 @@ from numpy import reshape
 
 from person2vec.test_embeddings import test_tasks
 
+
 def get_chosen_categories(preds, category_list):
     chosen_categories = []
     for i in range(0, len(preds[0])):
@@ -10,21 +11,31 @@ def get_chosen_categories(preds, category_list):
     return chosen_categories
 
 
-def get_yelp_category_results(model, test_model, category_list, db_handler,
-                            data_gen, embed_size, threshold=0.15):
+def get_yelp_category_results(model,
+                              test_model,
+                              category_list,
+                              db_handler,
+                              data_gen,
+                              embed_size,
+                              threshold=0.15):
     embeds = test_tasks.get_embed_weights_from_model(model)
-    ids_embeds = test_tasks.reassociate_embeds_with_ids(embeds, data_gen=data_gen)
+    ids_embeds = test_tasks.reassociate_embeds_with_ids(
+        embeds, data_gen=data_gen)
     ids_embeds.sort_index(inplace=True)
     chosen_and_correct_categories = []
-    for row in ids_embeds.iterrows():#range(0, len(ids_embeds)):
+    for row in ids_embeds.iterrows():  #range(0, len(ids_embeds)):
         preds = test_model.predict(reshape(row[1], (1, embed_size)))
-        preds[preds>=threshold] = 1
-        preds[preds<threshold] = 0
+        preds[preds >= threshold] = 1
+        preds[preds < threshold] = 0
         chosen_categories = get_chosen_categories(preds, category_list)
-        correct_categories = db_handler.get_entity({'_id':row[0]})['categories']
+        correct_categories = db_handler.get_entity({
+            '_id': row[0]
+        })['categories']
         # removes categories that are not in the set of categories we're testing
-        correct_categories = test_tasks._scrub_non_top(correct_categories, category_list)
-        chosen_and_correct_categories.append((chosen_categories, correct_categories))
+        correct_categories = test_tasks._scrub_non_top(correct_categories,
+                                                       category_list)
+        chosen_and_correct_categories.append((chosen_categories,
+                                              correct_categories))
     return chosen_and_correct_categories
 
 
@@ -50,11 +61,17 @@ def get_precision_recall(results):
     return precision, recall
 
 
-def evaluate_yelp_category_results(model, test_model, category_list,
-                                db_handler, data_gen, embed_size,
-                                num_train_examples, threshold=0.15):
+def evaluate_yelp_category_results(model,
+                                   test_model,
+                                   category_list,
+                                   db_handler,
+                                   data_gen,
+                                   embed_size,
+                                   num_train_examples,
+                                   threshold=0.15):
     results = get_yelp_category_results(model, test_model, category_list,
-                                            db_handler, data_gen, embed_size, threshold)
+                                        db_handler, data_gen, embed_size,
+                                        threshold)
     precision, recall = get_precision_recall(results[num_train_examples:])
 
-    return {'precision':precision, 'recall':recall}
+    return {'precision': precision, 'recall': recall}

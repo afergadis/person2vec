@@ -5,38 +5,53 @@ from keras import optimizers
 from person2vec import data_handler
 from person2vec.generators import training_data_generator
 
+DEFAULT_SETTINGS = {
+    'word_vec_size': 300,
+    'embedding_size': 300,
+    'num_compare_entities': 4,
+    'optimizer': optimizers.adam(),
+    'loss': 'categorical_crossentropy',
+    'snippet_size': 32
+}
 
-DEFAULT_SETTINGS = {'word_vec_size':300,
-                    'embedding_size':300,
-                    'num_compare_entities':4,
-                    'optimizer':optimizers.adam(),
-                    'loss':'categorical_crossentropy',
-                    'snippet_size':32
-                    }
 
-
-def _build_default_model(num_compare_entities=DEFAULT_SETTINGS['num_compare_entities'],
-                        word_vec_size=DEFAULT_SETTINGS['word_vec_size']):
+def _build_default_model(
+        num_compare_entities=DEFAULT_SETTINGS['num_compare_entities'],
+        word_vec_size=DEFAULT_SETTINGS['word_vec_size']):
     # setting variables for size of incoming data
     handler = data_handler.DataHandler()
     num_total_entities = handler.entity_count()
     snip_size = DEFAULT_SETTINGS['snippet_size']
     embedding_size = DEFAULT_SETTINGS['embedding_size']
 
-    input_tensor_words = Input(shape=(snip_size, word_vec_size,), dtype='float32', name='word_input')
-    input_tensor_entity = Input(shape=(num_compare_entities,), dtype='int32', name='entity_input')
+    input_tensor_words = Input(
+        shape=(
+            snip_size,
+            word_vec_size,
+        ), dtype='float32', name='word_input')
+    input_tensor_entity = Input(
+        shape=(num_compare_entities, ), dtype='int32', name='entity_input')
 
     word_flatten_layer = Flatten()(input_tensor_words)
 
-    entity_embedding_layer = Embedding(num_total_entities, embedding_size, input_length=num_compare_entities, name='entity_embedding')(input_tensor_entity)
+    entity_embedding_layer = Embedding(
+        num_total_entities,
+        embedding_size,
+        input_length=num_compare_entities,
+        name='entity_embedding')(input_tensor_entity)
     entity_embedding_layer = Flatten()(entity_embedding_layer)
 
-    word_branch = Dense(1000, activation="relu", name='dense_sentence_layer')(word_flatten_layer)
+    word_branch = Dense(
+        1000, activation="relu",
+        name='dense_sentence_layer')(word_flatten_layer)
 
-    joint_embeds = Concatenate(name='joint_embeds')([word_branch, entity_embedding_layer])
+    joint_embeds = Concatenate(name='joint_embeds')(
+        [word_branch, entity_embedding_layer])
 
-    nex = Dense(1000, activation="relu", name='dense_consolidator')(joint_embeds)
-    full_out = Dense (num_compare_entities, activation='softmax', name='final_output')(nex)
+    nex = Dense(
+        1000, activation="relu", name='dense_consolidator')(joint_embeds)
+    full_out = Dense(
+        num_compare_entities, activation='softmax', name='final_output')(nex)
 
     model = Model([input_tensor_words, input_tensor_entity], full_out)
 
@@ -47,14 +62,13 @@ def _build_default_model(num_compare_entities=DEFAULT_SETTINGS['num_compare_enti
     return model
 
 
-
 # can train a compiled model passed to it, or a default embedding model
 def train_model(model=None,
                 epochs=100,
                 steps_per_epoch=1024,
                 embed_size=DEFAULT_SETTINGS['embedding_size'],
                 word_vec_size=DEFAULT_SETTINGS['word_vec_size'],
-                data_gen= None,
+                data_gen=None,
                 batch_size=32,
                 num_compare_entities=DEFAULT_SETTINGS['num_compare_entities']):
 
@@ -65,15 +79,18 @@ def train_model(model=None,
         num_compare_entities = data_gen.num_compare_entities
     else:
         data_gen = training_data_generator.EmbeddingDataGenerator(
-                                            word_vec_size=word_vec_size,
-                                            num_compare_entities=num_compare_entities)
+            word_vec_size=word_vec_size,
+            num_compare_entities=num_compare_entities)
 
     if not model:
-        model = _build_default_model(num_compare_entities=num_compare_entities, word_vec_size=word_vec_size)
+        model = _build_default_model(
+            num_compare_entities=num_compare_entities,
+            word_vec_size=word_vec_size)
 
     gen = data_gen.flow_from_db(batch_size)
 
-    model.fit_generator(gen, steps_per_epoch=steps_per_epoch, epochs=epochs, verbose=1)
+    model.fit_generator(
+        gen, steps_per_epoch=steps_per_epoch, epochs=epochs, verbose=1)
 
     # return the model so user can do more with it later, inspect it, etc.
     # return the data_gen because it's frequently needed for testing and takes a while to initialize

@@ -9,10 +9,11 @@ def _get_entity_vec(num, embeds):
 def reassociate_embeds_as_lists_with_ids(embeds, data_gen):
     # the numbers that stand for entities that were fed to the embedding layer
     # entity_dict contains the entity id to number mapping
-    id_and_number = pandas.DataFrame.from_dict(data_gen.entity_dict, orient='index')
+    id_and_number = pandas.DataFrame.from_dict(
+        data_gen.entity_dict, orient='index')
 
     # this gives you a dataframe with 2 columns, id and vector
-    id_and_number[0] = id_and_number[0].apply(_get_entity_vec, args=(embeds,))
+    id_and_number[0] = id_and_number[0].apply(_get_entity_vec, args=(embeds, ))
 
     id_and_entity_vec = id_and_number
     id_and_entity_vec.columns = ['vector']
@@ -23,10 +24,11 @@ def reassociate_embeds_as_lists_with_ids(embeds, data_gen):
 def reassociate_embeds_with_ids(embeds, data_gen):
     # the numbers that stand for entities that were fed to the embedding layer
     # entity_dict contains the entity id to number mapping
-    id_and_number = pandas.DataFrame.from_dict(data_gen.entity_dict, orient='index')
+    id_and_number = pandas.DataFrame.from_dict(
+        data_gen.entity_dict, orient='index')
 
     # this gives you a dataframe with 2 columns, id and vector
-    id_and_number[0] = id_and_number[0].apply(_get_entity_vec, args=(embeds,))
+    id_and_number[0] = id_and_number[0].apply(_get_entity_vec, args=(embeds, ))
 
     id_and_entity_vec = id_and_number
     id_and_entity_vec.columns = ['vector']
@@ -41,5 +43,6 @@ def get_embed_weights_from_model(model):
     for i in model.layers:
         if '_embedding' in i.name:
             return i.get_weights()
-    raise ValueError("No embedding layer found. Please set the name property of your embedding layer contain the string '_embedding'")
-
+    raise ValueError(
+        "No embedding layer found. Please set the name property of your embedding layer contain the string '_embedding'"
+    )
