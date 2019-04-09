@@ -12,16 +12,12 @@ DATA_DIR = path.join(PROJECT_DIR, 'data')
 
 
 class DataHandler(object):
-    def __init__(self, db_settings_path=None):
-        if db_settings_path is None:
-            db_settings_path = path.join(DATA_DIR, 'db_settings.json')
-        with open(db_settings_path) as fp:
-            db = json.load(fp)
-        conn = "mongodb://{user}:{pwd}@{host}:{port}/{db_name}".format(**db)
-            # db['user'], db['pwd'], db['host'], db['post'], db['db_name'])
+    def __init__(self, user, pwd, host, port, db_name):
+        conn = "mongodb://{user}:{pwd}@{host}:{port}/{db_name}".format(
+            user=user, pwd=pwd, host=host, port=port, db_name=db_name)
         client = MongoClient(conn)
 
-        self.db = client[db['db_name']]
+        self.db = client[db_name]
         self.entities_collection = self.db.entities
         self.snippets_collection = self.db.snippets
 
@@ -54,7 +50,6 @@ class DataHandler(object):
     def create_entity(self, entry):
         try:
             post_id = self.entities_collection.insert_one(entry).inserted_id
-            # print("Successfully inserted into db")
             return post_id
         except:
             print("Failed to insert into db")
@@ -130,3 +125,7 @@ class DataHandler(object):
     # removes all snippets in the collection, returns count of removed snippets
     def wipe_snippet_collection(self):
         return self.snippets_collection.remove({})
+
+    def __str__(self):
+        return 'db: {}, host: {}:{}'.format(self.db.name, self.db.client.HOST,
+                                            self.db.client.PORT)
